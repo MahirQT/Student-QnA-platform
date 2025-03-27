@@ -9,11 +9,15 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
+# Database Models
 class Question(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text, nullable=False)
     image_path = db.Column(db.String(300), nullable=True)
     answer = db.Column(db.Text, nullable=True)
+    answer_image_path = db.Column(db.String(300), nullable=True)  # New field for image answers
+    answered_by = db.Column(db.String(100), nullable=True)  # Name of the person who answered
+    role = db.Column(db.String(50), nullable=True)  # 'Teacher' or 'Senior'
     upvotes = db.Column(db.Integer, default=0)
     downvotes = db.Column(db.Integer, default=0)
     comments = db.relationship('Comment', backref='question', lazy=True)
@@ -23,32 +27,31 @@ class Comment(db.Model):
     text = db.Column(db.Text, nullable=False)
     question_id = db.Column(db.Integer, db.ForeignKey('question.id'), nullable=False)
 
+# Routes
 @app.route('/')
 def student_page():
-    questions = Question.query.all()
+    questions = Question.query.order_by(Question.upvotes.desc()).all()
     return render_template('student.html', questions=questions)
 
 @app.route('/submit_question', methods=['POST'])
 def submit_question():
     text = request.form['text']
     image = request.files.get('image')
+
     image_path = None
-    
     if image and image.filename:
         upload_folder = app.config['UPLOAD_FOLDER']
-        
-        # Ensure the upload folder exists
         if not os.path.exists(upload_folder):
             os.makedirs(upload_folder)
 
-        image_path = os.path.join(upload_folder, image.filename)
+        image_filename = image.filename
+        image_path = os.path.join('static/uploads', image_filename)
         image.save(image_path)
-    
+
     new_question = Question(text=text, image_path=image_path)
     db.session.add(new_question)
     db.session.commit()
     return redirect(url_for('student_page'))
-
 
 @app.route('/add_comment', methods=['POST'])
 def add_comment():
@@ -84,13 +87,32 @@ def teacher_page():
 def submit_answer():
     question_id = request.form['question_id']
     answer = request.form['answer']
+    name = request.form['name']
+    role = request.form['role']
+    answer_image = request.files.get('answer_image')
+
     question = Question.query.get(question_id)
+    
     if question:
         question.answer = answer
+        question.answered_by = name
+        question.role = role
+        
+        if answer_image and answer_image.filename:
+            upload_folder = app.config['UPLOAD_FOLDER']
+            if not os.path.exists(upload_folder):
+                os.makedirs(upload_folder)
+            
+            image_filename = answer_image.filename
+            answer_image_path = os.path.join('static/uploads', image_filename)
+            answer_image.save(answer_image_path)
+            question.answer_image_path = answer_image_path
+
         db.session.commit()
+
     return redirect(url_for('teacher_page'))
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run(debug=True)  
