@@ -32,14 +32,29 @@
             {% if question.image_path %}
                 <img src="{{ question.image_path }}" class="img-fluid" alt="Question Image">
             {% endif %}
-            
-            <form action="/submit_answer" method="POST">
+
+            <form action="/submit_answer" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="question_id" value="{{ question.id }}">
-                <textarea class="form-control" name="answer" required placeholder="Write your answer..."></textarea>
+                
+                <label for="name">Your Name:</label>
+                <input type="text" name="name" class="form-control" required>
+                
+                <label for="role">You are a:</label>
+                <select name="role" class="form-control" required>
+                    <option value="Teacher">Teacher</option>
+                    <option value="Senior">Senior</option>
+                </select>
+                
+                <textarea class="form-control mt-2" name="answer" required placeholder="Write your answer..."></textarea>
+                
+                <label for="answer_image">Upload an image (optional):</label>
+                <input type="file" name="answer_image" class="form-control">
+                
                 <button type="submit" class="btn btn-primary mt-2">Submit Answer</button>
             </form>
-        </div>
+        </div>            
+            
         {% endfor %}
     </div>
 </body>
-</html>
+</html> 
