@@ -31,11 +31,11 @@
         <h2 class="text-center">Ask a Question</h2>
         <form action="/submit_question" method="POST" enctype="multipart/form-data">
             <div class="mb-3">
-                <label for="text" class="form-label">Enter your question:</label>
+                <label class="form-label">Enter your question:</label>
                 <textarea class="form-control" name="text" required></textarea>
             </div>
             <div class="mb-3">
-                <label for="image" class="form-label">Upload Image (Optional):</label>
+                <label class="form-label">Upload Image (Optional):</label>
                 <input type="file" class="form-control" name="image">
             </div>
             <button type="submit" class="btn btn-primary">Submit</button>
@@ -48,24 +48,27 @@
             {% if question.image_path %}
                 <img src="{{ question.image_path }}" class="img-fluid" alt="Question Image">
             {% endif %}
-            
             {% if question.answer %}
-                <p><strong>Answer:</strong> {{ question.answer }}</p>
-            {% else %}
-                <p><em>Awaiting answer from teacher...</em></p>
+                <div class="answer-box mt-3">
+                    <p><strong>Answer:</strong> {{ question.answer }}</p>
+                    {% if question.answer_image_path %}
+                        <img src="{{ question.answer_image_path }}" class="img-fluid" alt="Answer Image">
+                    {% endif %}
+                    <p class="text-muted mt-2">✅ Verified by <strong>{{ question.answered_by }}</strong> ({{ question.role }})</p>
+                </div>
             {% endif %}
             
-            <button class="btn btn-success upvote" data-id="{{ question.id }}">Upvote ({{ question.upvotes }})</button>
-            <button class="btn btn-danger downvote" data-id="{{ question.id }}">Downvote ({{ question.downvotes }})</button>
+            <button class="btn btn-success upvote" data-id="{{ question.id }}">Upvote (<span id="upvote-count-{{ question.id }}">{{ question.upvotes }}</span>)</button>
+            <button class="btn btn-danger downvote" data-id="{{ question.id }}">Downvote (<span id="downvote-count-{{ question.id }}">{{ question.downvotes }}</span>)</button>
             <button class="btn btn-info toggle-comments" data-id="{{ question.id }}">Comments</button>
-            
+
             <div class="comment-box mt-3" id="comment-box-{{ question.id }}">
-                <form action="/add_comment" method="POST">
+                <form class="comment-form" data-id="{{ question.id }}">
                     <input type="hidden" name="question_id" value="{{ question.id }}">
-                    <textarea class="form-control" name="text" required placeholder="Add a comment..."></textarea>
+                    <textarea class="form-control comment-text" required placeholder="Add a comment..."></textarea>
                     <button type="submit" class="btn btn-primary mt-2">Submit</button>
                 </form>
-                <div class="mt-3">
+                <div id="comments-list-{{ question.id }}">
                     {% for comment in question.comments %}
                         <p>{{ comment.text }}</p>
                     {% endfor %}
@@ -76,26 +79,42 @@
     </div>
 
     <script>
-        $(document).ready(function() {
-            $(".toggle-comments").click(function() {
-                var id = $(this).data("id");
-                $("#comment-box-" + id).slideToggle();
-            });
-            
-            $(".upvote").click(function() {
-                var id = $(this).data("id");
-                $.post("/upvote/" + id, function(data) {
-                    $(".upvote[data-id='" + id + "']").text("Upvote (" + data.upvotes + ")");
+        $(document).ready(function () {
+            // Upvote button click
+            $(".upvote").click(function () {
+                var questionId = $(this).data("id");
+                $.post(`/upvote/${questionId}`, function (data) {
+                    $("#upvote-count-" + questionId).text(data.upvotes);
                 });
             });
 
-            $(".downvote").click(function() {
-                var id = $(this).data("id");
-                $.post("/downvote/" + id, function(data) {
-                    $(".downvote[data-id='" + id + "']").text("Downvote (" + data.downvotes + ")");
+            // Downvote button click
+            $(".downvote").click(function () {
+                var questionId = $(this).data("id");
+                $.post(`/downvote/${questionId}`, function (data) {
+                    $("#downvote-count-" + questionId).text(data.downvotes);
                 });
+            });
+
+            // Toggle comments section
+            $(".toggle-comments").click(function () {
+                var questionId = $(this).data("id");
+                $("#comment-box-" + questionId).toggle();
+            });
+
+            // Submit comment
+            $(".comment-form").submit(function (event) {
+                event.preventDefault();
+                var questionId = $(this).data("id");
+                var commentText = $(this).find(".comment-text").val();
+
+                $.post("/add_comment", { question_id: questionId, text: commentText }, function () {
+                    $("#comments-list-" + questionId).append("<p>" + commentText + "</p>");
+                });
+
+                $(this).find(".comment-text").val(""); // Clear input after submission
             });
         });
     </script>
 </body>
-</html>
+</html> 
